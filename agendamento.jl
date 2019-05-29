@@ -33,6 +33,7 @@ tempo_operacao = Dict(
     (tarefas[3], maquinas[3]) => 2
 )
 
+
 tempo_maximo = 0
 for i in collect(1:tam_tarefas)
     for j in collect(1:tam_maquinas)
@@ -45,63 +46,80 @@ linha_do_tempo = collect(1:tempo_maximo)
 
 model = Model(with_optimizer(Gurobi.Optimizer))
 
-@variable(model, tempo >= 1, Int)
-@variable(model, maquinas_realizando_operacao[1:tam_maquinas, 1:tempo_maximo , 1:tam_operacoes], Bin)
+@variable(
+            model, 
+            tempo_maximo >= tempo_tarefas_operacoes[1:tam_tarefas, 1:tam_operacoes] >= 1, 
+            Int
+)
+
+# @variable(
+#             model, 
+#             tempo_maximo >= tempo_tarefas_maquinas[1:tam_tarefas, 1:tam_maquinas] >= 1, 
+#             Int
+# )
+
+@variable(
+            model, 
+            tempo_maximo >= tarefas_maquina_tempo[1:tam_maquinas, 1:tempo_maximo] >= 1, 
+            Int
+)
 
 
-@objective(model, Min, tempo)
+@variable(model, tempo_maximo >= maior_tempo >= 1, Int)
+
+@objective(model, Min, maior_tempo)
 
 
-println(model)
-
-
-# Adiciona restrições de exclusividade
-for i in collect(1:tam_maquinas)
-    for j in collect(1:tempo_maximo)
-        for k in collect(1:tam_operacoes-1)
-            for l in collect(k+1:tam_operacoes)
-                @constraint(model, maquinas_realizando_operacao[i,j,k] + maquinas_realizando_operacao[i,j,l] <= 1)
-            end
-        end
-    end
-end
-
-# Adiciona restrições de ordem
-# for t in collect(1:tam_tarefas)
-#     for i in collect(1:tam_operacoes-1)
-#         for j in collect(i+1:tam_operacoes)
-#             maquinas_realizando_operacao[maquinas_operacao[t,i], ]
+# for i in collect(1:tam_tarefas)
+#     for j in collect(1:tam_maquinas)
+#         for o in collect(1:tam_operacoes)
+#             if (maquinas_operacao[i, o] == maquinas[j])
+#                 @constraint(model, tempo_tarefas_maquinas[i, j] == tempo_tarefas_operacoes[i, o])
+#             end
 #         end
 #     end
 # end
 
 
-println(model)
-
-
-
+for i in collect(1:tam_tarefas)
+    for j in collect(1:tam_operacoes-1)
+            @constraint(model, 
+                    tempo_tarefas_operacoes[i, j+1] >= tempo_tarefas_operacoes[i, j] + 1
+            )
+    end
+end
 
 # @constraints(model, 
 #                 begin
-#                     [i in collect(1:tam_maquinas)], 
-#                     [j in collect(1:tempo_maximo)], 
-#                     [k in collect(1:tam_operacoes)], 
-#                     [l in collect(k+1:tam_operacoes)], 
-#                     maquinas_realizando_operacao[i,j,k] + maquinas_realizando_operacao[i,j,l] <= 1
+#                     [i in collect(2:tam_tarefas)],
+#                     tempo_tarefas_operacoes[1,tam_operacoes] >= tempo_tarefas_operacoes[i,tam_operacoes]
 #                 end
-#             )
-
-# @constraint(model, capacidade, sum(x[i]*p[i] for i in n) <= C)
-
-# @constraints(model, 
-#     begin
-
-#     end
 # )
 
-# optimize!(model)
+for j in collect(1:tam_operacoes)
+    @constraints(model, 
+                    begin
+                        maior_tempo >= tempo_tarefas_operacoes[j, tam_operacoes]
+                    end
+    )
+end
 
-# println("Peso total = ", peso_total)
+println(model)
 
-# println("Função ótima: ", JuMP.objective_value(model))
+optimize!(model)
 
+for i in collect(1:tam_tarefas)
+    for j in collect(1:tam_operacoes)
+        print(JuMP.value(tempo_tarefas_operacoes[i,j]), " ")
+    end
+    println()
+end
+
+println("----------------------------")
+
+for i in collect(1:tam_maquinas)
+    for j in collect(1:tempo_maximo)
+        print(JuMP.value(tarefas_maquina_tempo[i,j]), " ")
+    end
+    println()
+end
