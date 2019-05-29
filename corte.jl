@@ -18,6 +18,7 @@ add_edge!(G1,4,5)
 
 using JuMP
 using Gurobi
+
 model = Model(with_optimizer(Gurobi.Optimizer))
 
 @variable(model, 1 >= x[1:n] >= 0, Int)
